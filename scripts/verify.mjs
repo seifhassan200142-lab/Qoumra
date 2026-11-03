@@ -18,9 +18,12 @@ for(const locale of ['en','ar']) {
  assert(!html.includes('Interactive review'));
  assert(!/Q \/ 01|art-kicker|art-caption|لنخطط لنموك|حوّل الانتباه/.test(html));
  assert.equal((html.match(/<video /g)||[]).length,4);
- assert.equal((html.match(/controls autoplay muted loop playsinline/g)||[]).length,4);
+ assert.equal((html.match(/autoplay muted loop playsinline/g)||[]).length,4);
  assert.equal((html.match(/data-find-service=/g)||[]).length,4);
- for(const id of ['ai','creative','web','growth']) assert(html.includes('aria-controls="film-'+id+'"'));
+ assert.equal((html.match(/class="channel-icon"/g)||[]).length,6);
+ assert.equal((html.match(/<svg viewBox="0 0 24 24"/g)||[]).length,6);
+ assert(!/film-controls|video-toggle|contact-note|Available soon|بيانات التواصل هتكون|معاينة فيديو بدون صوت/.test(html));
+ assert.equal((html.match(/tabindex="0" role="button"/g)||[]).length,4);
  assert(html.includes('type="submit" disabled'),'An unconfigured email must not claim submission');
 }
 ctx.window.QOUMRA_CONFIG.contact.email='hello@example.com';

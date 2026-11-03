@@ -6,7 +6,7 @@
   let activeGallery = null, imageIndex = 0, galleryTrigger = null;
   let finishIntro = () => {};
   let cleanupPage = () => {};
-  try { locale = new URLSearchParams(location.search).get('reviewLocale') || localStorage.getItem('qoumra-locale') || 'en'; } catch {}
+  try { locale = new URLSearchParams(location.search).get('reviewLocale') || 'en'; } catch {}
   if (!['ar','en'].includes(locale)) locale = 'en';
   const $ = s => document.querySelector(s);
   const content = () => window.QOUMRA_CONTENT[locale];
@@ -27,7 +27,7 @@
     wirePage();
     if (draft) for (const [name,value] of Object.entries(draft)) { const field=$('#inquiry-form').elements.namedItem(name); if(field) field.value=value; }
     if (!initial) {
-      try { localStorage.setItem('qoumra-locale',locale); const url = new URL(location.href); url.searchParams.set('reviewLocale',locale); history.replaceState({},'',url); } catch {}
+      try { const url = new URL(location.href); url.searchParams.set('reviewLocale',locale); history.replaceState({},'',url); } catch {}
       window.scrollTo({top:oldScroll,behavior:'instant'});
       $('.language-switch').focus({preventScroll:true});
     }
@@ -93,6 +93,7 @@
     $('[data-open-privacy]').addEventListener('click',()=>privacy.showModal());
     $('[data-close-privacy]').addEventListener('click',()=>privacy.close());
     cleanup.push(setupVideos());
+    cleanup.push(setupScrollReveal());
     const navLinks=[...document.querySelectorAll('.desktop-nav a,.mobile-panel nav a')];
     const markNav=id=>navLinks.forEach(link=>{if(link.getAttribute('href')==='#'+id)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
     const hashId=location.hash.slice(1);markNav(['ai','creative','web','growth'].includes(hashId)?'services':hashId||'home');
@@ -113,8 +114,8 @@
     const sync=record=>{
       const playing=!record.video.paused&&!record.video.ended;
       record.video.dataset.playback=playing?'playing':'paused';
-      record.button.textContent=playing?content().ui.pause:content().ui.play;
-      record.button.setAttribute('aria-label',record.button.textContent+' — '+record.title);
+      record.video.setAttribute('aria-label',(playing?content().ui.pause:content().ui.play)+' — '+record.title);
+      record.video.setAttribute('aria-pressed',String(playing));
     };
     const tryPlay=record=>{
       if(destroyed||!record.visible||document.hidden||record.userPaused||record.blocked||(!autoAllowed()&&!record.userStarted))return;
@@ -124,19 +125,51 @@
       entries.forEach(entry=>{const r=records.find(item=>item.video===entry.target);if(!r)return;r.visible=entry.isIntersecting&&entry.intersectionRatio>=.25;if(r.visible)tryPlay(r);else r.video.pause();});
     },{threshold:[0,.25]}):null;
     document.querySelectorAll('video').forEach(video=>{
-      const button=document.querySelector('[aria-controls="'+video.id+'"]');
-      const record={video,button,title:video.getAttribute('aria-label'),visible:false,userPaused:false,userStarted:false,blocked:false};
+      const record={video,title:video.getAttribute('aria-label'),visible:false,userPaused:false,userStarted:false,blocked:false};
       records.push(record);video.autoplay=false;video.muted=true;video.defaultMuted=true;video.loop=true;video.playsInline=true;video.controls=false;video.pause();
-      video.closest('.film-frame').querySelector('.film-controls').hidden=false;
-      button.addEventListener('click',()=>{if(video.paused){record.userPaused=false;record.userStarted=true;record.blocked=false;record.visible=true;tryPlay(record);}else{record.userPaused=true;record.userStarted=false;video.pause();}sync(record);});
+      const toggle=()=>{if(video.paused){record.userPaused=false;record.userStarted=true;record.blocked=false;record.visible=true;tryPlay(record);}else{record.userPaused=true;record.userStarted=false;video.pause();}sync(record);};
+      video.addEventListener('click',toggle);
+      video.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();toggle();}});
       video.addEventListener('play',()=>sync(record));video.addEventListener('pause',()=>sync(record));
-      video.addEventListener('error',()=>{record.blocked=true;video.controls=true;video.closest('.film-frame').querySelector('.film-controls').hidden=true;video.poster=window.QOUMRA_CONFIG.media[video.id.replace('film-','')].poster;},{once:true});
+      video.addEventListener('error',()=>{record.blocked=true;video.poster=window.QOUMRA_CONFIG.media[video.id.replace('film-','')].poster;},{once:true});
       sync(record);observer?.observe(video);
     });
     const visibility=()=>records.forEach(r=>{if(document.hidden)r.video.pause();else tryPlay(r);});
     const motion=()=>records.forEach(r=>{if(!autoAllowed()&&!r.userStarted)r.video.pause();else tryPlay(r);});
     document.addEventListener('visibilitychange',visibility);reduced.addEventListener('change',motion);
     return()=>{destroyed=true;observer?.disconnect();document.removeEventListener('visibilitychange',visibility);reduced.removeEventListener('change',motion);records.forEach(r=>r.video.pause());};
+  }
+
+  // Content is visible without JavaScript. Re-entering from either edge replays
+  // a small fade/slide; no hidden layout, scroll hijacking, or pinned text.
+  function setupScrollReveal() {
+    if (reduced.matches || !('IntersectionObserver' in window)) return () => {};
+    const selector = [
+      '.introduction > .eyebrow', '.section-intro > *', '.finder-choices button',
+      '.finder-result', '.finder-hint', '.section-heading > *', '.service-heading > *',
+      '.service-details details', '.service-cta', '.portfolio-category > *',
+      '.portfolio-filters', '.gallery-card', '.example-card', '.package-row',
+      '.about-grid > div:last-child > *', '.process-section > .eyebrow',
+      '.process-section > h2', '.process-steps li', '.contact-grid > div:first-child',
+      '#inquiry-form', '.footer-main > *'
+    ].join(',');
+    const elements = [...document.querySelectorAll(selector)];
+    const setState = (element, visible, above) => {
+      element.classList.toggle('is-visible', visible);
+      element.classList.toggle('reveal-from-top', !visible && above);
+    };
+    const observer = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        setState(entry.target, entry.isIntersecting, entry.boundingClientRect.bottom <= 0);
+      }
+    }, {rootMargin:'0px 0px -32px 0px', threshold:0});
+    for (const element of elements) {
+      const rect = element.getBoundingClientRect();
+      setState(element, rect.bottom > 0 && rect.top < window.innerHeight - 32, rect.bottom <= 0);
+      element.classList.add('scroll-reveal');
+      observer.observe(element);
+    }
+    return () => { observer.disconnect();elements.forEach(e=>e.classList.remove('scroll-reveal','is-visible','reveal-from-top')); };
   }
 
   async function intro() {

@@ -15,3 +15,15 @@
 - Original logo, fonts, video files and photo placeholder paths retained; exact brand color tokens retained.
 
 Still needed before a public launch: twelve real photographs, six verified contact values, and real portfolio details in place of illustrative cards. GitHub Pages serving the main branch is not changed by a draft pull request.
+
+## Follow-up polish
+
+- English is the default for plain URLs; Arabic is still available through the language button and explicit locale links. No saved browser preference overrides the default.
+- Browser checked the plain URL in English and switching to Arabic.
+- Six inline contact SVG icons verified in both language renders; Arabic desktop and a 390 px responsive frame visually reviewed without horizontal overflow.
+- Contact waiting messages and video toolbar are absent from rendered markup. Real contact configuration and disabled submission safeguards remain intact.
+- Advertising title updated to the approved-style plain Arabic wording.
+- Video still autoplays muted in view with controls hidden; Enter on the video itself paused it in the browser test.
+- Scroll-reveal targets changed from hidden below the viewport to visible on entry, hidden above it on exit, and visible again on upward navigation. Layout dimensions do not depend on reveal state.
+- Reduced-motion, print, keyboard-focus and no-JavaScript visibility fallbacks are implemented. Physical mobile/reduced-motion OS settings were not separately tested.
+- Syntax and existing bilingual/asset/contact checks passed after the revision.
